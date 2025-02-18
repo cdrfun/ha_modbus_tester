@@ -1,15 +1,15 @@
 using YamlDotNet.Serialization;
 using YamlDotNet.Serialization.NamingConventions;
-using HAModbusTools.Models;
+using ha_modbus_tester.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace HAModbusTools.Services;
+namespace ha_modbus_tester.Services;
 
 public class YamlParser
 {
-    public ModbusHub ParseModbusConfig(string yamlContent)
+    public static ModbusHub ParseModbusConfig(string yamlContent)
     {
         IDeserializer deserializer = new DeserializerBuilder()
             .WithNamingConvention(UnderscoredNamingConvention.Instance)
@@ -17,16 +17,18 @@ public class YamlParser
 
         Dictionary<string, object> config = deserializer.Deserialize<Dictionary<string, object>>(yamlContent);
         
-        if (!config.ContainsKey("modbus"))
+        if (!config.TryGetValue("modbus", out object? value))
+        {
             throw new Exception("No modbus configuration found in YAML file");
+        }
 
-        List<object> modbusList = (List<object>)config["modbus"];
+        List<object> modbusList = (List<object>)value;
         Dictionary<object, object> firstModbusConfig = (Dictionary<object, object>)modbusList[0];
 
         string host = firstModbusConfig["host"]?.ToString() 
             ?? throw new Exception("Host is required in modbus configuration");
 
-        ModbusHub modbusHub = new ModbusHub(host)
+        ModbusHub modbusHub = new(host)
         {
             Name = firstModbusConfig["name"]?.ToString(),
             Port = int.Parse(firstModbusConfig["port"]?.ToString() ?? "502"),
@@ -36,7 +38,7 @@ public class YamlParser
         if (firstModbusConfig.ContainsKey("sensors"))
         {
             List<object> sensors = (List<object>)firstModbusConfig["sensors"];
-            foreach (Dictionary<object, object> sensor in sensors)
+            foreach (Dictionary<object, object> sensor in sensors.Cast<Dictionary<object, object>>())
             {
                 modbusHub.Sensors.Add(new ModbusSensor
                 {

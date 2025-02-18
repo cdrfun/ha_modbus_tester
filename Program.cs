@@ -1,10 +1,10 @@
 using System;
 using System.IO;
 using System.Threading.Tasks;
-using HAModbusTools.Services;
-using HAModbusTools.Models;
+using ha_modbus_tester.Services;
+using ha_modbus_tester.Models;
 
-namespace HAModbusTools;
+namespace ha_modbus_tester;
 
 public class Program
 {
@@ -13,26 +13,30 @@ public class Program
         try
         {
             if (!ValidateArgs(args))
+            {
                 return 1;
+            }
 
             Console.WriteLine("=== Home Assistant Modbus Configuration Tester ===");
             Console.WriteLine($"Reading configuration from: {args[0]}");
 
             ModbusHub? config = await ParseConfiguration(args[0]);
             if (config == null)
+            {
                 return 1;
+            }
 
-            Console.WriteLine($"\nModbus Configuration:");
+            Console.WriteLine($"{Environment.NewLine}Modbus Configuration:");
             Console.WriteLine($"Host: {config.Host}");
             Console.WriteLine($"Port: {config.Port}");
-            Console.WriteLine($"Number of sensors: {config.Sensors.Count}\n");
+            Console.WriteLine($"Number of sensors: {config.Sensors.Count}{Environment.NewLine}");
 
             await TestModbusConnection(config);
             return 0;
         }
         catch (Exception ex)
         {
-            Console.Error.WriteLine($"\nUnexpected error: {ex.Message}");
+            Console.Error.WriteLine($"{Environment.NewLine}Unexpected error: {ex.Message}");
             return 1;
         }
     }
@@ -60,8 +64,8 @@ public class Program
         try
         {
             string yamlContent = await File.ReadAllTextAsync(yamlPath);
-            YamlParser parser = new YamlParser();
-            return parser.ParseModbusConfig(yamlContent);
+            YamlParser parser = new();
+            return YamlParser.ParseModbusConfig(yamlContent);
         }
         catch (Exception ex)
         {
@@ -72,17 +76,17 @@ public class Program
 
     private static async Task TestModbusConnection(ModbusHub config)
     {
-        Console.WriteLine("Starting Modbus connection test...\n");
+        Console.WriteLine($"Starting Modbus connection test...{Environment.NewLine}");
 
-        ModbusTester tester = new ModbusTester();
+        ModbusTester tester = new();
         try
         {
             await tester.TestConnection(config);
-            Console.WriteLine("\nModbus test completed successfully.");
+            Console.WriteLine($"{Environment.NewLine}Modbus test completed successfully.");
         }
         catch (Exception ex)
         {
-            Console.Error.WriteLine($"\nModbus test failed: {ex.Message}");
+            Console.Error.WriteLine($"{Environment.NewLine}Modbus test failed: {ex.Message}");
             throw;
         }
     }

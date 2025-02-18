@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace HAModbusTools.Models;
+namespace ha_modbus_tester.Models;
 
 public class ModbusHub(string host)
 {
