@@ -10,14 +10,27 @@ public class ModbusTester
 {
     public async Task TestConnection(ModbusHub config)
     {
-        using TcpClient tcpClient = new();
+        if (config.Type != ModbusType.Tcp)
+        {
+            throw new NotImplementedException($"Modbus type {config.Type} is not yet supported");
+        }
 
+        using TcpClient tcpClient = new();
+        
+        Console.WriteLine($"Connecting to {config.Host}:{config.Port}...");
+        
         int timeout = config.Timeout * 1000;
 
         Task connectTask = tcpClient.ConnectAsync(config.Host, config.Port);
         if (await Task.WhenAny(connectTask, Task.Delay(timeout)) != connectTask)
         {
             throw new TimeoutException($"Connection timeout after {config.Timeout} seconds");
+        }
+
+        if (config.Delay > 0)
+        {
+            Console.WriteLine($"Waiting initial delay of {config.Delay} seconds...");
+            await Task.Delay(config.Delay * 1000);
         }
         
         tcpClient.ReceiveTimeout = timeout;
@@ -26,18 +39,26 @@ public class ModbusTester
         ModbusFactory factory = new();
         IModbusMaster master = factory.CreateMaster(tcpClient);
 
+        bool isFirstRead = true;
         foreach (ModbusSensor sensor in config.Sensors)
         {
             try
             {
-                Console.WriteLine($"Testing sensor: {sensor.Name}{Environment.NewLine}");
+                if (!isFirstRead && config.MessageWaitMilliseconds > 0)
+                {
+                    Console.WriteLine($"Waiting {config.MessageWaitMilliseconds}ms before next read...");
+                    await Task.Delay(config.MessageWaitMilliseconds);
+                }
+                isFirstRead = false;
+
+                Console.WriteLine($"Testing sensor: {sensor.Name}");
 
                 ushort[] data = await master.ReadHoldingRegistersAsync(
                     (byte)sensor.SlaveId,
                     (ushort)sensor.Address,
                     (ushort)sensor.Count);
                 
-                Console.WriteLine($"Success! Read {data.Length} registers.{Environment.NewLine}");
+                Console.WriteLine($"Success! Read {data.Length} registers.");
                 Console.WriteLine($"Values: {string.Join(", ", data)}{Environment.NewLine}");
             }
             catch (Exception ex)
